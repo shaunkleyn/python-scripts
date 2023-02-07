@@ -9,7 +9,7 @@ from ffmpeg_progress_yield import FfmpegProgress
 
 config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../config.ini')
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read(config_file)
 
 flac_folder = config['FLAC2M4A']['flac_folder']
 destination_folder = config['FLAC2M4A']['destination_folder']
