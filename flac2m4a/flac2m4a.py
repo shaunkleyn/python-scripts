@@ -11,12 +11,12 @@ config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../confi
 config = configparser.ConfigParser()
 config.read('config.ini')
 
-flac_folder = config['DEFAULT']['flac_folder']
-destination_folder = config['DEFAULT']['destination_folder']
-delete_flac = config.getboolean('DEFAULT', 'delete_flac')
-metadata_comment = config['DEFAULT']['metadata_comment']
-encoder = config['DEFAULT']['encoder']
-bitrate = config['DEFAULT']['bitrate']
+flac_folder = config['FLAC2M4A']['flac_folder']
+destination_folder = config['FLAC2M4A']['destination_folder']
+delete_flac = config.getboolean('FLAC2M4A', 'delete_flac')
+metadata_comment = config['FLAC2M4A']['metadata_comment']
+encoder = config['FLAC2M4A']['encoder']
+bitrate = config['FLAC2M4A']['bitrate']
 
 new_file_extension = 'm4a'
 
