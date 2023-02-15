@@ -3,3 +3,6 @@
 *.bat
 venv/
 /venv/
+/local/
+*.log
+*.txt
