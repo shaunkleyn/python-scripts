@@ -1,1 +1,5 @@
 .vscode/settings.json
+*.cmd
+*.bat
+venv/
+/venv/
