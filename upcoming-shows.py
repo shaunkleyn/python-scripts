@@ -32,18 +32,23 @@ sonarr = SonarrAPI(sonarr_url, sonarr_api_key)
 
 library_name = plex_library
 
+# App specific
+log_filename = sonarr_api_key = config['upcoming-shows']['log_level_filename']
+file_log_level = sonarr_api_key = config['upcoming-shows']['log_level_for_file']
+console_log_level = sonarr_api_key = config['upcoming-shows']['log_level_for_console']
+
 #############
 ## LOGGING ##
 #############
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upcoming_shows.log')
-logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), log_filename)
+logging.basicConfig(filename=log_file, level=file_log_level, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 # create logger
 logger = logging.getLogger('')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(file_log_level)
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
+ch.setLevel(console_log_level)
 
 # create formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -98,7 +103,7 @@ def get_upcoming_from_sonarr():
             next_airing = series.nextAiring
             #season = series.seasons[-1]
             print(f'{series.title} upcoming {next_airing}')
-            logger.info(f'{series.title} upcoming {next_airing}')
+            # logger.info(f'{series.title} upcoming {next_airing}')
             key = rem_time(next_airing)
 
             if upcoming.get(key) is None:
@@ -141,7 +146,7 @@ def clear_upcoming_tags_in_plex():
             if has_upcoming_label is not None and len(has_upcoming_label) > 0:
                 for label in has_upcoming_label:
                     plex_series.removeLabel(label)
-                    print('Removing label ' + label.tag + ' from ' + plex_series.title)
+                    # print('Removing label ' + label.tag + ' from ' + plex_series.title)
                     logger.info('Removing label ' + label.tag + ' from ' + plex_series.title)
             
             if hasattr(plex_series, 'seasons'):
@@ -150,7 +155,7 @@ def clear_upcoming_tags_in_plex():
                     if season_labels is not None and len(season_labels) > 0:
                         for season_label in season_labels:
                             plex_season.removeLabel(season_label)
-                            print('Removing label ' + season_label.tag + ' from ' + plex_series.title + ' Season ' + str(plex_season.seasonNumber))
+                            # print('Removing label ' + season_label.tag + ' from ' + plex_series.title + ' Season ' + str(plex_season.seasonNumber))
                             logger.info('Removing label ' + season_label.tag + ' from ' + plex_series.title + ' Season ' + str(plex_season.seasonNumber))
                         plex_season.reload()
 
@@ -169,16 +174,19 @@ keys.sort()
 # sorted_dict = {i: myDict[i] for i in myKeys}
 
 for key in keys:
-    print(upcoming[key])
+    logger.info(upcoming[key])
     for show in upcoming[key]:
         plex_show = plex.library.section(library_name).getGuid('tvdb://' + str(show['tvdb']))
         plex_season = getSeasonFromPlex(plex_show, int(show['season_number']))
         if plex_season is None:
             plex_show.addLabel('Upcoming_NewSeason')
+            logger.info(f'Adding label "Upcoming_NewSeason" to SHOW: {plex_show.title}')
         else:
             plex_show.addLabel('Upcoming')
+            logger.info(f'Adding label "Upcoming" to SHOW: {plex_show.title}')
             plex_season.addLabel(show['when'])
+            logger.info(f"Adding label {show['when']} to SHOW: {plex_show.title}, SEASON: {plex_season.seasonNumber}")
 
 
-print('Done')
+logger.info('Done')
 
