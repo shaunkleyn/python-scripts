@@ -35,7 +35,7 @@ library_name = plex_library
 #############
 ## LOGGING ##
 #############
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../upcoming_shows.log')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '/upcoming_shows.log')
 logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 # create logger
 logger = logging.getLogger('')
