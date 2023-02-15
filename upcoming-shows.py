@@ -26,7 +26,6 @@ plex_library = config['plex']['library']
 # Sonarr
 sonarr_url = config['sonarr']['url']
 sonarr_api_key = config['sonarr']['apikey']
-tagsToSyncToPlexArray = config['sonarr']['tagsToSyncToPlex']
 
 plex = PlexServer(plex_url, plex_token)
 sonarr = SonarrAPI(sonarr_url, sonarr_api_key)
