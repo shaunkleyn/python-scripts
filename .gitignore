@@ -1,4 +1,11 @@
 .vscode/settings.json
+*.cmd
+*.bat
+venv/
+/venv/
+/local/
+*.log
+*.txt
 .venv/pyvenv.cfg
 .venv/
 deleted_files.txt
