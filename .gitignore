@@ -1,1 +1,6 @@
 .vscode/settings.json
+.venv/pyvenv.cfg
+.venv/
+deleted_files.txt
+config.ini
+.DS_Store
