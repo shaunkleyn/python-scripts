@@ -35,15 +35,15 @@ library_name = plex_library
 #############
 ## LOGGING ##
 #############
-log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '/upcoming_shows.log')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'upcoming_shows.log')
 logging.basicConfig(filename=log_file, level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 # create logger
 logger = logging.getLogger('')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+ch.setLevel(logging.INFO)
 
 # create formatter
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -90,6 +90,7 @@ def next_weekday(d, weekday):
     return d + datetime.timedelta(days_ahead)
 
 def get_upcoming_from_sonarr():
+    logger.info('get_upcoming_from_sonarr')
     upcoming = {}
     all = sonarr.all_series()
     for series in all:
@@ -97,6 +98,7 @@ def get_upcoming_from_sonarr():
             next_airing = series.nextAiring
             #season = series.seasons[-1]
             print(f'{series.title} upcoming {next_airing}')
+            logger.info(f'{series.title} upcoming {next_airing}')
             key = rem_time(next_airing)
 
             if upcoming.get(key) is None:
@@ -105,16 +107,20 @@ def get_upcoming_from_sonarr():
             when = ''
             if key == rem_time(datetime.date.today()):
                 when = 'LaterToday'
+                logger.info(f'Set to {when}')
             elif key == rem_time(datetime.date.today() + datetime.timedelta(days=1)):
                 when = 'Tomorrow'
+                logger.info(f'Set to {when}')
             elif next_airing.date() > (datetime.date.today() + datetime.timedelta(days=1)) and next_airing.date() <= next_weekday(datetime.date.today(), 6):
                 when = calendar.day_name[next_airing.date().weekday()]
+                logger.info(f'Set to {when}')
             elif next_airing.date() > next_weekday(datetime.date.today(), 6) and next_airing.date() < next_weekday(datetime.date.today(), 13):
                when = 'NextWeek'
+               logger.info(f'Set to {when}')
 
             if when != '':
                 upcoming[key].append({'title': series.title, 'tvdb': series.tvdbId, 'when' : 'Upcoming_' + when, 'season_number' : series.seasons[-1].seasonNumber})
-
+                logger.info(f'title: {series.title}, tvdb: {series.tvdbId}, when : Upcoming_{when}, season_number : {series.seasons[-1].seasonNumber}')
             # season = series.seasons[-1]
             # nam = series.seasons[-1]
             # os.makedirs(f"./{series.cleanTitle}/{series.seasons[-1].seasonNumber}", exist_ok=True)
@@ -136,14 +142,17 @@ def clear_upcoming_tags_in_plex():
                 for label in has_upcoming_label:
                     plex_series.removeLabel(label)
                     print('Removing label ' + label.tag + ' from ' + plex_series.title)
+                    logger.info('Removing label ' + label.tag + ' from ' + plex_series.title)
             
             if hasattr(plex_series, 'seasons'):
                 for plex_season in plex_series.seasons():
                     season_labels = [i for i in plex_season.labels if i.tag.startswith('Upcoming')]
                     if season_labels is not None and len(season_labels) > 0:
                         for season_label in season_labels:
-                            plex_series.removeLabel(season_label)
+                            plex_season.removeLabel(season_label)
                             print('Removing label ' + season_label.tag + ' from ' + plex_series.title + ' Season ' + str(plex_season.seasonNumber))
+                            logger.info('Removing label ' + season_label.tag + ' from ' + plex_series.title + ' Season ' + str(plex_season.seasonNumber))
+                        plex_season.reload()
 
 
 if len(sys.argv) > 1:
