@@ -16,11 +16,13 @@ tautulli_url = f'http://{tautulli_ip}:{tautulli_port}/api/v2?apikey={tautulli_ap
 tautulli_url2 = f'http://{tautulli_ip}:{tautulli_port}/api/v2' #?apikey={tautulli_api_key}'
 
 termination_message_intro = config['termination']['message_intro']
+termination_reason = config['termination']['reason']
+
 
 
 def getSessions(ssn):
     response = ssn.get(f'{tautulli_url}&cmd=get_activity').json().get('response')
-    if response is not None and response['result'] == 'success':
+    if response is not None and response['result'] == 'success' and hasattr(response['data'], 'sessions'):
         return response['data']['sessions']
 
     return None
@@ -68,6 +70,9 @@ def millisecondsToTime(milliseconds):
 
     print ("%d:%d:%d" % (hours, minutes, seconds))
     return "%dh:%dm:%ds" % (hours, minutes, seconds)
+
+if len(sys.argv) > 1:
+    termination_reason = sys.argv[1]
 
 ssn = requests.Session()
 sessions = getSessions(ssn)
