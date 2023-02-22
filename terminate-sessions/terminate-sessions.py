@@ -22,7 +22,7 @@ termination_reason = config['termination']['reason']
 
 def getSessions(ssn):
     response = ssn.get(f'{tautulli_url}&cmd=get_activity').json().get('response')
-    if response is not None and response['result'] == 'success' and hasattr(response['data'], 'sessions'):
+    if response is not None and response['result'] == 'success' and len(response['data']) > 0:
         return response['data']['sessions']
 
     return None
