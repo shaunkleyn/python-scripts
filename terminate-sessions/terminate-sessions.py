@@ -93,7 +93,7 @@ if sessions is not None and len(sessions) > 0:
 
             message = f"Hi {session['friendly_name']}.  We're sorry to interrupt you while you're watching '{sessionTitle}', you were probably just getting into it.  We need to stop your stream for a while due to the following: __reason__.  Be sure to continue watching '{sessionTitle}' from {stream_progress} when we're back online."
             # TODO
-            message = message.replace('__reason__', 'reason goes here')
+            message = message.replace('__reason__', termination_reason)
 
             #message = html.escape(message)
             terminateSession(ssn, session['session_key'], message)
