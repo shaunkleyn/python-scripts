@@ -71,6 +71,9 @@ def millisecondsToTime(milliseconds):
     print ("%d:%d:%d" % (hours, minutes, seconds))
     return "%dh:%dm:%ds" % (hours, minutes, seconds)
 
+for i in range(1, len(sys.argv)):
+    print('argument:', i, 'value:', sys.argv[i])
+
 if len(sys.argv) > 1:
     termination_reason = sys.argv[1]
 
