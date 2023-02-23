@@ -8,6 +8,8 @@ config_path = pathlib.Path(__file__).parent.absolute() / "config.ini"
 config = configparser.ConfigParser()
 config.read(config_path)
 
+print('Using ' + config_path)
+
 # Tautulli setup
 tautulli_ip = config['tautulli']['ip']
 tautulli_port = config['tautulli']['port']
