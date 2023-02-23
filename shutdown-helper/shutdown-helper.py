@@ -75,6 +75,7 @@ def millisecondsToTime(milliseconds):
 
 if len(sys.argv) > 1:
     termination_reason = sys.argv[1]
+    print (termination_reason)
 
 ssn = requests.Session()
 sessions = getSessions(ssn)
