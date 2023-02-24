@@ -2,7 +2,9 @@ import configparser
 import pathlib
 import requests
 import sys
+import os
 import html
+import json
 
 config_path = pathlib.Path(__file__).parent.absolute() / "config.ini"
 config = configparser.ConfigParser()
@@ -18,7 +20,22 @@ tautulli_url2 = f'http://{tautulli_ip}:{tautulli_port}/api/v2' #?apikey={tautull
 termination_message_intro = config['termination']['message_intro']
 termination_reason = config['termination']['reason']
 
+def sendMessage(title, text):
+    payload = {
+        'tag': 'terminate-sessions',
+        'title': title,
+        'body': text,
+        'type': 'info'
+    }
 
+    headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
+    req = requests.post(
+        url="https://apprise.mediaservarr.co.za/notify/default",
+        json = payload,
+        headers=headers
+    )
+
+sendMessage(str(os.path.basename(__file__)), 'Starting...')
 
 def getSessions(ssn):
     response = ssn.get(f'{tautulli_url}&cmd=get_activity').json().get('response')
@@ -30,6 +47,7 @@ def getSessions(ssn):
 
 
 def terminate_session(self, session_key=None, session_id=None, message=''):
+    sendMessage(f'Terminating Session {session_key}', message)
     """Call Tautulli's terminate_session api endpoint"""
     payload = {}
 
@@ -97,3 +115,5 @@ if sessions is not None and len(sessions) > 0:
 
             #message = html.escape(message)
             terminateSession(ssn, session['session_key'], message)
+else:
+    sendMessage('', 'No sessions to terminate')
