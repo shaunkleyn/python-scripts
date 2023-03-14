@@ -86,9 +86,12 @@ for root, dirs, files in os.walk(directory):
             if title != "Normalized":
                 print("Normalizing audio for " + file)
                 #subprocess.run(["ffmpeg-normalize", "-pr", "-f", file])
-                subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", f'"{file}"', "-f"])
-    
-                subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
+                process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", f'"{file}"', "-f"])
+                if process.returncode == 0:
+                    print("Command ran successfully")
+                    subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
+                else:
+                    print(f"Command failed with return code {process.returncode}")
     
             # Send a CURL POST request to https://apprise.pleximus.co.za/notify with JSON data
             # requests.post('https://apprise.pleximus.co.za/notify', json={
