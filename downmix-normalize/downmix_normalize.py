@@ -86,7 +86,7 @@ for root, dirs, files in os.walk(directory):
             if title != "Normalized":
                 print("Normalizing audio for " + file)
                 #subprocess.run(["ffmpeg-normalize", "-pr", "-f", file])
-                subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", file, "-f"])
+                subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", f'"{file}"', "-f"])
     
                 subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
     
