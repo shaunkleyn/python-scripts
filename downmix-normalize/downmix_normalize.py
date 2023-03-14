@@ -27,13 +27,6 @@ for root, dirs, files in os.walk(directory):
                 if len(info) > 2:
                     title = info[2]
                     
-                # result = subprocess.run(["mediainfo", "--Inform=Audio;%Channels%", "--Inform=Audio;%CodecID%", "--Inform=Audio;%Title%", file], capture_output=True, text=True)
-                # lines = result.stdout.split("\n")
-                # channels = int(lines[0])
-                # codec = lines[1]
-                # title = ""
-                # if lines.count > 1:
-                #     title = lines[2]
             except:
                 sys.exit(1)
             
@@ -86,7 +79,7 @@ for root, dirs, files in os.walk(directory):
             if title != "Normalized":
                 print("Normalizing audio for " + file)
                 #subprocess.run(["ffmpeg-normalize", "-pr", "-f", file])
-                process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", f'"{file}"', "-f"])
+                process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", f'"{file}"', "-f", file])
                 if process.returncode == 0:
                     print("Command ran successfully")
                     subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
