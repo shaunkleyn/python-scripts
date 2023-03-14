@@ -12,7 +12,7 @@ directory = args.directory
 # loop through all .mkv files in the current directory
 # for file in os.listdir():
 for file in os.listdir(directory):
-    if file.endswith(".mkv"):
+    if file.endswith((".mkv", ".mp4")):
         # try to retrieve audio track information using mediainfo
         try:
             print("Processing " + file)
