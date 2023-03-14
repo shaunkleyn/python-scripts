@@ -86,7 +86,11 @@ for root, dirs, files in os.walk(directory):
                     subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
                 else:
                     print(f"Command failed with return code {process.returncode}")
-    
+            else:
+                    subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=none"])
+                    print(file + " already normalized")
+
+
             # Send a CURL POST request to https://apprise.pleximus.co.za/notify with JSON data
             # requests.post('https://apprise.pleximus.co.za/notify', json={
             #     'urls': 'tgram://5022461051:AAHjO6VfT25und8CdEKIN1pxXagER-oN3Uk/-1001647957502',
