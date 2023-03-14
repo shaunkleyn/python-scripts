@@ -1,9 +1,17 @@
 import subprocess
 import os
 import sys
+# As you can see, this is pretty much identical to your code
+from argparse import ArgumentParser
+parser = ArgumentParser()
+parser.add_argument("-f", "--folder", dest="directory", help="Folder containing items to normalize")
+args = parser.parse_args()
+directory = args.directory
+
 
 # loop through all .mkv files in the current directory
-for file in os.listdir():
+# for file in os.listdir():
+for file in os.listdir(directory):
     if file.endswith(".mkv"):
         # try to retrieve audio track information using mediainfo
         try:
