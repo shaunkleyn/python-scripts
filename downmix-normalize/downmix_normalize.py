@@ -87,7 +87,7 @@ for root, dirs, files in os.walk(directory):
                 else:
                     print(f"Command failed with return code {process.returncode}")
             else:
-                    subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=none"])
+                    #subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=none"])
                     print(file + " already normalized")
 
 
