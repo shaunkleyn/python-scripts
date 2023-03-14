@@ -15,7 +15,7 @@ directory = args.directory
 #    if file.endswith((".mkv", ".mp4")):
 for root, dirs, files in os.walk(directory):
     for f in files:
-        file = print(os.path.join(root, f))
+        file = os.path.join(root, f)
         if file.endswith((".mkv", ".mp4", ".m4v")):
         # try to retrieve audio track information using mediainfo
             try:
