@@ -2,9 +2,15 @@ import subprocess
 import os
 import sys
 import logging
+import configparser
+
 
 # As you can see, this is pretty much identical to your code
 from argparse import ArgumentParser
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
 parser = ArgumentParser()
 parser.add_argument("-f", "--folder", dest="directory", help="Folder containing items to normalize")
 args = parser.parse_args()
