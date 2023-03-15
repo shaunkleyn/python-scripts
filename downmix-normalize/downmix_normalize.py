@@ -10,11 +10,13 @@ parser.add_argument("-f", "--folder", dest="directory", help="Folder containing 
 args = parser.parse_args()
 directory = args.directory
 
-logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log.txt')
+
+logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='log.txt', mode='a')
+handler = logging.FileHandler(filename=log_file, mode='a')
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(logging.Formatter('%(asctime)s|[%(levelname)s] %(message)s'))
 logger.addHandler(handler)
