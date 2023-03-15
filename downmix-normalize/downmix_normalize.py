@@ -3,13 +3,21 @@ import os
 import sys
 import logging
 import configparser
+from pathlib import Path
+import pathlib
 
 
 # As you can see, this is pretty much identical to your code
 from argparse import ArgumentParser
 
+# config_path = pathlib.Path(__file__).parent.absolute() / "config.ini"
+config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.ini')
+
+
 config = configparser.ConfigParser()
-config.read('config.ini')
+config.read(config_file)
+downmix_filter = config['ffmpeg']['downmix_filter']
+
 
 parser = ArgumentParser()
 parser.add_argument("-f", "--folder", dest="directory", help="Folder containing items to normalize")
@@ -66,7 +74,8 @@ for root, dirs, files in os.walk(directory):
             if channels > 2:
                 logger.info(f'Downmixing {str(channels)} and extracting WAV')
                 # subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=0.25*FL+FC+0.6*LFE|FR=0.25*FR+FC+0.6*LFE", "-vn", file + "-ffmpeg.wav"])
-                subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE", "-vn", file + "-ffmpeg.wav"])
+                # subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE", "-vn", file + "-ffmpeg.wav"])
+                subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", downmix_filter, "-vn", file + "-ffmpeg.wav"])
             elif (channels == 2 and codec != "A_AAC-2"):
                 logger.info("Extracting WAV")
                 subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-vn", file + "-ffmpeg.wav"])
