@@ -117,7 +117,8 @@ for root, dirs, files in os.walk(directory):
             if title != "Normalized":
                 logger.info("Normalizing audio for " + file)
                 #subprocess.run(["ffmpeg-normalize", "-pr", "-f", file])
-                process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", file, "-f", file])
+                process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-c:a", "libfdk_aac", "-b:a", "192k", "-koa", "-o", file, "-f", file])
+                #ffmpeg-normalize -v "%%~nxF" -ar 48000 -c:a aac -b:a 192k -o "%%~nF_temp%%~xF" && echo Adding NORMALIZED_AUDIO metadata && ffmpeg -v quiet -stats -hide_banner -y -i "%%~nF_temp%%~xF" -c copy -metadata NORMALIZED_AUDIO="true" "%%~nxF" && echo Deleting "%%~nF_temp%%~xF" && del "%%~nF_temp%%~xF" 2>nul
                 if process.returncode == 0:
                     logger.info("Command ran successfully")
                     subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
