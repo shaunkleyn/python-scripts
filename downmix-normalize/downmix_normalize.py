@@ -33,11 +33,8 @@ logger.addHandler(ch)
 
 # loop through all .mkv files in the current directory
 # for file in os.listdir():
-#for file in os.listdir(directory):
-#    if file.endswith((".mkv", ".mp4")):
 for root, dirs, files in os.walk(directory):
     for f in files:
-        #file = os.path.join(root, f)
         file = os.path.normpath(os.path.join(root, f))
         if file.endswith((".mkv", ".mp4", ".m4v")):
         # try to retrieve audio track information using mediainfo
@@ -49,8 +46,14 @@ for root, dirs, files in os.walk(directory):
                 title = ""
                 if len(info) > 2:
                     title = info[2]
-                    
+                
+                logger.info(f'Processing {file}')
+                logger.info(f'Codec: {codec}')
+                logger.info(f'Channels: {channels}')
+                logger.info(f'Title: {title}')
+                
             except:
+                logger.fata(f'Could not retrieve audio details for file {file}')
                 sys.exit(1)
             
             # extract audio to wav and apply filter if necessary
