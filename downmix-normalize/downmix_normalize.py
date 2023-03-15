@@ -82,7 +82,7 @@ for root, dirs, files in os.walk(directory):
     
             # check if -ffmpeg.wav file exists
             if os.path.isfile(file + "-ffmpeg.wav"):
-                print("Converting to AAC")
+                logger.info("Converting to AAC")
                 # convert wav to aac using qaac
                 if sys.platform == "win32":
                     subprocess.run(["qaac64", file + "-ffmpeg.wav", "-v", "127", "-o", file + "-aac.m4a"])
@@ -92,7 +92,7 @@ for root, dirs, files in os.walk(directory):
                 # delete -ffmpeg.wav file
                 os.remove(file + "-ffmpeg.wav")
     
-                print("Replacing Audio")
+                logger.info("Replacing Audio")
                 # replace audio track in original file with -qaac.m4a
                 # subprocess.run(["mkvmerge", "-o", file + "_temp.mkv", file, "--no-audio", "--language", "0:eng", "--track-name", "0:Audio", file + "-aac.m4a"])
                 subprocess.run(["mkvmerge", "-o", file + "_temp.mkv", "--no-audio", file, file + "-aac.m4a"])
@@ -111,23 +111,23 @@ for root, dirs, files in os.walk(directory):
             
             # check if .srt file exists
             if os.path.isfile(file.replace(".mkv", ".srt")):
-                print("Embedding subtitles")
+                logger.info("Embedding subtitles")
                 # merge .srt file into original file
                 subprocess.run(["mkvmerge", "-o", file + "_temp.mkv", file, file.replace(".mkv", ".srt")])
                 os.rename(file + "_temp.mkv", file)
             
             # normalize audio and update title if necessary
             if title != "Normalized":
-                print("Normalizing audio for " + file)
+                logger.info("Normalizing audio for " + file)
                 #subprocess.run(["ffmpeg-normalize", "-pr", "-f", file])
                 process = subprocess.run(["ffmpeg-normalize", "-pr", "-ar", "48000", "-o", file, "-f", file])
                 if process.returncode == 0:
-                    print("Command ran successfully")
+                    logger.info("Command ran successfully")
                     subprocess.run(["mkvpropedit", file, "--edit", "track:a1", "--set", "name=Normalized"])
                 else:
-                    print(f"Command failed with return code {process.returncode}")
+                    logger.info(f"Command failed with return code {process.returncode}")
             else:
-                    print(file + " already normalized")
+                    logger.info(file + " already normalized")
 
 
             # Send a CURL POST request to https://apprise.pleximus.co.za/notify with JSON data
