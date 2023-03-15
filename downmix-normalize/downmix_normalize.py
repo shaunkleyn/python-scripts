@@ -50,7 +50,7 @@ for root, dirs, files in os.walk(directory):
         if file.endswith((".mkv", ".mp4", ".m4v")):
         # try to retrieve audio track information using mediainfo
             try:
-                print("Processing " + file)
+                logger.info("Processing " + file)
                 info = subprocess.run(['mediainfo', '--Inform=Audio;%CodecID%,%Channel(s)%,%Title%', file], capture_output=True, text=True).stdout.strip().split(',')
                 codec = info[0]
                 channels = int(info[1])
@@ -58,7 +58,7 @@ for root, dirs, files in os.walk(directory):
                 if len(info) > 2:
                     title = info[2]
                 
-                logger.info(f'Processing {file}')
+                # logger.info(f'Processing {file}')
                 logger.info(f'Codec: {codec}')
                 logger.info(f'Channels: {channels}')
                 logger.info(f'Title: {title}')
