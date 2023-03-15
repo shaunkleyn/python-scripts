@@ -1,6 +1,8 @@
 import subprocess
 import os
 import sys
+import logging
+
 # As you can see, this is pretty much identical to your code
 from argparse import ArgumentParser
 parser = ArgumentParser()
@@ -8,6 +10,24 @@ parser.add_argument("-f", "--folder", dest="directory", help="Folder containing 
 args = parser.parse_args()
 directory = args.directory
 
+logging.basicConfig(filename='log.txt', encoding='utf-8', level=logging.DEBUG, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='log.txt', mode='a')
+handler = logging.StreamHandler(sys.stderr)
+handler.setFormatter(logging.Formatter('%(asctime)s|[%(levelname)s] %(message)s'))
+logger.addHandler(handler)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+# create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# add formatter to ch
+ch.setFormatter(formatter)
+# add ch to logger
+logger.addHandler(ch)
 
 # loop through all .mkv files in the current directory
 # for file in os.listdir():
