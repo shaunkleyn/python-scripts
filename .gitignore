@@ -11,3 +11,4 @@ venv/
 deleted_files.txt
 config.ini
 .DS_Store
+config.ini

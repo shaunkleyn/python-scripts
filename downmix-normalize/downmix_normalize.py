@@ -47,7 +47,7 @@ ch.setFormatter(formatter)
 for root, dirs, files in os.walk(directory):
     for f in files:
         file = os.path.normpath(os.path.join(root, f))
-        if file.endswith((".mkv", ".mp4", ".m4v")):
+        if file.endswith((".mkv")):
         # try to retrieve audio track information using mediainfo
             try:
                 logger.info("Processing " + file)
@@ -65,14 +65,14 @@ for root, dirs, files in os.walk(directory):
                 
             except:
                 logger.fatal(f'Could not retrieve audio details for file {file}')
-                sys.exit(1)
+                #sys.exit(1)
             
             # extract audio to wav and apply filter if necessary
             if channels > 2:
                 logger.info(f'Downmixing {str(channels)} and extracting WAV')
                 # subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=0.25*FL+FC+0.6*LFE|FR=0.25*FR+FC+0.6*LFE", "-vn", file + "-ffmpeg.wav"])
-                # subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE", "-vn", file + "-ffmpeg.wav"])
-                subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", downmix_filter, "-vn", file + "-ffmpeg.wav"])
+                subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", "pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE", "-vn", file + "-ffmpeg.wav"])
+                #subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-af", downmix_filter, "-vn", file + "-ffmpeg.wav"])
             elif (channels == 2 and codec != "A_AAC-2"):
                 logger.info("Extracting WAV")
                 subprocess.run(["ffmpeg", "-hide_banner", "-y", "-i", file, "-vn", file + "-ffmpeg.wav"])
