@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-f", "/Users/shaunkleyn/Desktop/normalize-audio/test-23-06-19/"]
+            "args": ["-d", "/Volumes/Music/music.bkup-contain dups/", "/Volumes/Music/Music/iTunes/iTunes Media/Music/"]
         }
     ]
 }
