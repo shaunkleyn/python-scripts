@@ -12,7 +12,11 @@
             "console": "integratedTerminal",
             "justMyCode": true,
             // "args2": ["-f", "/Volumes/Internal/DownloadAgents/nzbget/complete/series/Secrets.of.Playboy.S02E01.Who.Wants.to.Be.a.Playboy.Centerfold.1080p.HULU.WEB-DL.AAC2.0.H264-WhiteHat.mkv-xpost/"],
-            "args": ["-f", "/Users/shaunkleyn/Desktop/normalize-audio/test-23-07-12/"]
+            "args": ["-f", "/Volumes/Internal/temp/manual processing/casper rasper"],
+            "env": {
+                "sonarr_episodefile_path": "/Users/shaunkleyn/Desktop/3rdrock.mkv",
+                "sonarr_eventtype": "Download"
+            }
             // "args": ["-f", "/Volumes/media/series/Ancient Aliens"]
         }
     ]

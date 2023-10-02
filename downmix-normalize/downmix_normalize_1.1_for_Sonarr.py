@@ -156,12 +156,12 @@ def run_script_command(script):
     return Popen([str(script)], shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,close_fds=(os.name != 'nt'))
 
 def getStreamInfo(file):
+    log(logging.DEBUG, f'getStreamInfo')
     info = {}
     info['audio'] = []
     info['video'] = []
     cmd = ['ffprobe', '-show_format', '-show_streams', '-loglevel', 'quiet', '-print_format', 'json', file]
     try:
-        # res = run_script(str.join(' ', cmd))
         result = subprocess.check_output(cmd)
         data = json.loads(result.decode("utf-8"))
         for stream in data['streams']:
@@ -176,6 +176,7 @@ def getStreamInfo(file):
         return info
 
 def removeAdditionalAudioStreams(filepath):
+    log(logging.DEBUG, f'removeAdditionalAudioStreams')
     filename, file_extension = os.path.splitext(filepath)
     
     send_notification(filename, log(logging.INFO, f'Removing additional audio streams...'))
@@ -340,14 +341,12 @@ def run_command(command):
 
 def delete(file):
     try:
-        filepath = SONARR_FILE_PATH
-        filename, file_extension = os.path.splitext(filepath)
-        file_message.append(log(logging.DEBUG, f'Attempting to delete "{FILE_NAME_AND_EXTENSION}"...'))
+        file_message.append(log(logging.DEBUG, f'Attempting to delete "{file}"...'))
         os.remove(file)
-        file_message.append(log(logging.DEBUG, f'Successfully deleted "{FILE_NAME_AND_EXTENSION}"'))
+        file_message.append(log(logging.DEBUG, f'Successfully deleted "{file}"'))
         return True
     except Exception as e:
-        file_message.append(log(logging.FATAL, f'Unable to delete file "{FILE_NAME_AND_EXTENSION}". {e}'))
+        file_message.append(log(logging.FATAL, f'Unable to delete file "{file}". {e}'))
         return False
     
 def rename(oldname, newname):
@@ -577,9 +576,9 @@ def processFile(file_path):
         if convert_audio_response['success']:
             codec = 'aac'
             
-        # delete -ffmpeg.wav file
-        logging.debug('Deleting wav file')
-        delete(loudnorm_audio_file)
+        # # delete -ffmpeg.wav file
+        # logging.debug('Deleting wav file')
+        # delete(loudnorm_audio_file)
 
         logger.info("Replacing Audio using mkvmerge")
         # replace audio track in original file with -qaac.m4a
@@ -621,8 +620,8 @@ def processFile(file_path):
                 if newfile_md5 == replaced_file:
                     delete(temp_file)
             else:
-                replaceFile(file_path, temp_file)
-                # replaceFile(temp_file, file_path)
+                # replaceFile(file_path, temp_file)
+                replaceFile(temp_file, file_path)
                 delete(temp_file)
             # if(rename(file, file + '.delete')):
             #     if(rename(file + "_temp_metadata.mkv", file)):
@@ -640,7 +639,7 @@ def processFile(file_path):
     # send_notification(FILE_NAME, str.join('\n-----\n', file_message))    
 
 
-log(logging.INFO, 'Checking for Sonarr file...')
+log(logging.INFO, '======== START PROCESSING ========')
 
 if 'sonarr_eventtype' not in os.environ:
     log(logging.DEBUG, "No Sonarr event detected.  The script will now exit.")
@@ -672,7 +671,8 @@ if os.environ["sonarr_eventtype"].lower() == 'download':
             log(logging.DEBUG, f'TEMP_FOLDER: {TEMP_FOLDER}')
             
             processFile(SONARR_FILE_PATH)
-            log(logger.INFO, f'Completed processing for: {FILE_NAME_AND_EXTENSION}')
+            log(logging.INFO, f'Completed processing for: {FILE_NAME_AND_EXTENSION}')
+            log(logging.INFO, '======== FINISHED PROCESSING ========')
             exit(0)
         except Exception as e:
             log(logging.FATAL, f'Could not process file {FILE_NAME}. {e}')
