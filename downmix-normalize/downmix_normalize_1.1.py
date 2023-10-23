@@ -13,7 +13,7 @@ import time
 import shutil
 import hashlib
 from sys import exit
-
+from colorlog import ColoredFormatter
 
 # As you can see, this is pretty much identical to your code
 from argparse import ArgumentParser
@@ -29,10 +29,18 @@ TEMP_FOLDER = 'I:\\temp\\'
 
 parser = ArgumentParser()
 parser.add_argument("-f", "--folder", dest="directory", help="Folder containing items to normalize")
+parser.add_argument("-c", "--compression", dest="compression", help="The compression config to apply")
 args = parser.parse_args()
 directory = args.directory
+compression = args.compression
+
+
+
+if compression is None or compression == "":
+    compression = 'compression_filter_values'
 
 compression_values = config['audio']['compression_filter_values']
+compression_values = config['audio'][compression]
 
 check_md5 = False
 notification_retry_count = 1
@@ -49,7 +57,7 @@ logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename=log_file, mode='a')
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(logging.Formatter('%(asctime)s|[%(levelname)s] %(message)s'))
-logger.addHandler(handler)
+#logger.addHandler(handler)
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
@@ -57,6 +65,26 @@ ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 # logger.addHandler(ch)
+LOG_LEVEL = logging.DEBUG
+LOGFORMAT = "  %(log_color)s%(asctime)s | %(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s"
+
+
+from colorlog import ColoredFormatter
+logging.root.setLevel(LOG_LEVEL)
+formatter = ColoredFormatter(LOGFORMAT, datefmt="%m-%d %H:%M:%S", log_colors={
+		'DEBUG':    'cyan',
+		'INFO':     'green',
+		'WARNING':  'yellow',
+		'ERROR':    'red',
+		'CRITICAL': 'red,bg_white',
+	})
+stream = logging.StreamHandler()
+stream.setLevel(LOG_LEVEL)
+stream.setFormatter(formatter)
+log = logging.getLogger('pythonConfig')
+log.setLevel(LOG_LEVEL)
+
+logger.addHandler(stream)
 
 input_i = -16
 input_tp = -1.5
@@ -103,6 +131,8 @@ def getLoudNormValues(file):
     send_notification(file, log(logging.INFO, 'Retrieving loudnorm values...'))
     filter_cmd = 'loudnorm=I=-23:TP=-2:LRA=15:linear=true:print_format=json'
     cmd = ['ffmpeg', '-i', f'"{file}"']
+    # cmd.append('-threads')
+    # cmd.append('8')
     cmd.append('-af')
     cmd.append(filter_cmd)
     cmd.append('-f')
@@ -410,6 +440,8 @@ def apply_compression(file, channels):
         
         cmd.append(audio_filter)
         cmd.append('-vn')
+        cmd.append('-ar')
+        cmd.append('48000')
         cmd.append(output_file)
         response['data']['command'] = str.join(' ', cmd)
         run_command(cmd)
@@ -433,8 +465,13 @@ def apply_loudnorm(file):
         loudnorm_values = getLoudNormValues(file)
         loudnorm_params = f"loudnorm=I={str(input_i)}:TP={str(input_tp)}:LRA={str(input_lra)}:measured_I={loudnorm_values['input_i']}:measured_LRA={loudnorm_values['input_lra']}:measured_TP={loudnorm_values['input_tp']}:measured_thresh={loudnorm_values['input_thresh']}:offset={loudnorm_values['target_offset']}:linear=true:print_format=summary"
         file_message.append(log(logging.INFO, loudnorm_params))
+        #ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.61:measured_LRA=18.06:measured_TP=-4.47:measured_thresh=-39.20:offset=0.58:linear=true:print_format=summary -ar 48k out.wav
+        #cmd.append('-ar')
+        #cmd.append('48k')
         cmd.append(loudnorm_params)
         cmd.append('-vn')
+        cmd.append('-ar')
+        cmd.append('48000')
         cmd.append(output_file)
         # subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, "-af", loudnorm_params, "-vn", file + "-ffmpeg_norm.wav"])
         response['data']['command'] = str.join(' ', cmd)
@@ -649,7 +686,7 @@ def processFile(file_path):
                 if newfile_md5 == replaced_file:
                     delete(temp_file)
             else:
-                log(logging.INFO, f'Replacing file...\n\tSrc:')
+                #log(logging.INFO, f'Replacing file...\n\tSrc:')
                 # replaceFile(file_path, temp_file)
                 replaceFile(temp_file, file_path)
                 delete(response['data']['file'])
@@ -727,5 +764,4 @@ for root, dirs, files in os.walk(directory):
             log(logging.FATAL, f'Could not process file {FILE_NAME}. {e}')
             send_notification(FILE_NAME, str.join('\n', file_message))
             exit(1)
-        
         
