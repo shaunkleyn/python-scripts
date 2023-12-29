@@ -14,8 +14,6 @@ import shutil
 import hashlib
 from sys import exit
 from colorlog import ColoredFormatter
-from datetime import datetime
-
 
 # As you can see, this is pretty much identical to your code
 from argparse import ArgumentParser
@@ -42,7 +40,7 @@ if compression is None or compression == "":
     compression = 'compression_filter_values'
 
 compression_values = config['audio']['compression_filter_values']
-# compression_values = config['audio'][compression]
+compression_values = config['audio'][compression]
 
 check_md5 = False
 notification_retry_count = 0
@@ -169,8 +167,6 @@ def getFilePath(file):
 
 def addToHistory(file):
     with open(history_file, 'a', encoding='utf-8') as f:
-        now = datetime.now()
-        f.write(f'{now}\n')
         f.write(f'{file}\n')
     # log(logging.DEBUG, f'Added {file} to history')
 
@@ -228,7 +224,7 @@ def getStreamInfo(file):
         return info
 
 def removeAdditionalAudioStreams(filepath):
-    log(logging.DEBUG, f'removeAdditionalAudioStreams')
+    # log(logging.DEBUG, f'removeAdditionalAudioStreams')
     filename, file_extension = os.path.splitext(filepath)
     
 #    response = []
@@ -243,7 +239,6 @@ def removeAdditionalAudioStreams(filepath):
     reconvert = False
 
     try:
-        log(logging.DEBUG, cmd)
         result = subprocess.check_output(cmd)
         data = json.loads(result.decode("utf-8"))
 
@@ -440,38 +435,24 @@ def apply_compression(file, channels):
     response['data']['tags'] = []
     
     try:
-        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file]
-        # cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, '-af']
-        audio_filter = []
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, '-af']
+        audio_filter = ''
+        if config.getboolean('audio', 'apply_compression_filter') == True:
+            audio_filter = f'compand={compression_values}' # 'compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7'
             
         if config.getboolean('audio', 'downmix_audio') == True and channels > 2: #downmix == True:
-            if config.getboolean('audio', 'builtin_downmix') == True:
-                cmd.append('-ac')
-                cmd.append('2')
-            else:
-                downmix_filter = config['audio'][f'downmix_{channels}ch_filter']
-                audio_filter.append(downmix_filter)
-                # audio_filter = downmix_filter
+            downmix_filter = config['audio'][f'downmix_{channels}ch_filter']
             #audio_filter = f'pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE,{audio_filter}'
-            # audio_filter = f'{downmix_filter},{audio_filter}'
+            audio_filter = f'{downmix_filter},{audio_filter}'
             file_message.append(log(logging.INFO, f'Downmixing {str(channels)} and extracting WAV'))
             response['data']['tags'].append('downmixed')
         else:
             logger.info("Extracting WAV")
-            
-        if config.getboolean('audio', 'apply_compression_filter') == True:
-            # audio_filter = f'compand={compression_values}' # 'compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7'
-            # audio_filter = f'{audio_filter},compand={compression_values}'
-            audio_filter.append(f'compand={compression_values}')
-            
-        if audio_filter != '':
-            cmd.append('-af')
-            cmd.append(str.join(',', audio_filter))
         #     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, "-af", "compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7", "-vn", file + "-ffmpeg.wav"])
         #     tags.append('compand')
         #     tags.append('dynaudnorm')  
         
-        
+        cmd.append(audio_filter)
         cmd.append('-vn')
         cmd.append('-ar')
         cmd.append('48000')
@@ -627,7 +608,6 @@ def processFile(file_path):
     video_file = ''
     try:
         result = removeAdditionalAudioStreams(file_path)
-        log(logging.DEBUG, f'DONE removeAdditionalAudioStreams')
         video_file = result['data']['file']
         # file_message.append(str.join('\n', result['data']['output']))
         data = getStreamInfo(result['data']['file'])
@@ -784,8 +764,8 @@ for root, dirs, files in os.walk(directory):
 
 
             try:
-                #if checkHistory(FILE_PATH):
-                #    continue
+                if checkHistory(FILE_PATH):
+                    continue
                 
                 # log(logging.DEBUG, f'FILE_PATH: {FILE_PATH}')
                 # log(logging.DEBUG, f'FILE_NAME: {FILE_NAME}')

@@ -13,8 +13,6 @@ import time
 import shutil
 import hashlib
 from sys import exit
-from colorlog import ColoredFormatter
-from datetime import datetime
 
 
 # As you can see, this is pretty much identical to your code
@@ -29,29 +27,14 @@ downmix_filter = config['ffmpeg']['downmix_filter']
 temp_folder = 'I:\\temp\\'
 TEMP_FOLDER = 'I:\\temp\\'
 
-parser = ArgumentParser()
-parser.add_argument("-f", "--folder", dest="directory", help="Folder containing items to normalize")
-parser.add_argument("-c", "--compression", dest="compression", help="The compression config to apply")
-args = parser.parse_args()
-directory = args.directory
-compression = args.compression
-
-
-
-if compression is None or compression == "":
-    compression = 'compression_filter_values'
 
 compression_values = config['audio']['compression_filter_values']
-# compression_values = config['audio'][compression]
 
 check_md5 = False
-notification_retry_count = 0
-notification_retry_delay = 0
-
-is_sonarr_event = False
+notification_retry_count = 1
+notification_retry_delay = 2
 
 log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'for-sonarr.txt')
-history_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'history_file.txt')
 
 logging.basicConfig(filename=log_file, encoding='utf-8', level=logging.DEBUG, format='%(asctime)s  %(levelname)s:  %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 
@@ -60,7 +43,7 @@ logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename=log_file, mode='a')
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(logging.Formatter('%(asctime)s|[%(levelname)s] %(message)s'))
-#logger.addHandler(handler)
+logger.addHandler(handler)
 
 # create console handler and set level to debug
 ch = logging.StreamHandler()
@@ -68,26 +51,6 @@ ch.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 # logger.addHandler(ch)
-LOG_LEVEL = logging.DEBUG
-LOGFORMAT = "  %(log_color)s%(asctime)s | %(levelname)-8s%(reset)s | %(log_color)s%(message)s%(reset)s"
-
-
-from colorlog import ColoredFormatter
-logging.root.setLevel(LOG_LEVEL)
-formatter = ColoredFormatter(LOGFORMAT, datefmt="%m-%d %H:%M:%S", log_colors={
-		'DEBUG':    'cyan',
-		'INFO':     'green',
-		'WARNING':  'yellow',
-		'ERROR':    'red',
-		'CRITICAL': 'red,bg_white',
-	})
-stream = logging.StreamHandler()
-stream.setLevel(LOG_LEVEL)
-stream.setFormatter(formatter)
-log = logging.getLogger('pythonConfig')
-log.setLevel(LOG_LEVEL)
-
-logger.addHandler(stream)
 
 input_i = -16
 input_tp = -1.5
@@ -98,12 +61,12 @@ fileNumber = 0
 file_message = []
 
 file = ''
-FILE_PATH = ''
+SONARR_FILE_PATH = ''
 FILE_NAME_AND_EXTENSION = ''
 FILE_NAME = ''
 FILE_EXTENSION = ''
 FILE_DIRECTORY_PATH = ''
-SPACE = '                              '
+
 
 def log(type, message):
     if type == logging.DEBUG:
@@ -134,8 +97,6 @@ def getLoudNormValues(file):
     send_notification(file, log(logging.INFO, 'Retrieving loudnorm values...'))
     filter_cmd = 'loudnorm=I=-23:TP=-2:LRA=15:linear=true:print_format=json'
     cmd = ['ffmpeg', '-i', f'"{file}"']
-    # cmd.append('-threads')
-    # cmd.append('8')
     cmd.append('-af')
     cmd.append(filter_cmd)
     cmd.append('-f')
@@ -154,7 +115,7 @@ def getLoudNormValues(file):
 def getFilename(file):
     filename = file
     if os.path.isfile(file):
-        filepath = FILE_PATH
+        filepath = SONARR_FILE_PATH
         filename, file_extension = os.path.splitext(filepath)
         f1, f2 = os.path.split(filename)
     
@@ -163,22 +124,9 @@ def getFilename(file):
 def getFilePath(file):
     filePath = file
     if os.path.isfile(file):
-        filePath = FILE_PATH
+        filePath = SONARR_FILE_PATH
     
     return filePath
-
-def addToHistory(file):
-    with open(history_file, 'a', encoding='utf-8') as f:
-        now = datetime.now()
-        f.write(f'{now}\n')
-        f.write(f'{file}\n')
-    # log(logging.DEBUG, f'Added {file} to history')
-
-def checkHistory(file):
-    # log(logging.DEBUG, f'Checking {file} in history')
-
-    with open(history_file) as dataf:
-        return any(file in line for line in dataf)
 
 def getTempFilePath(file, tempFilename):
     if sys.platform == "win32":
@@ -208,7 +156,7 @@ def run_script_command(script):
     return Popen([str(script)], shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE,close_fds=(os.name != 'nt'))
 
 def getStreamInfo(file):
-    # log(logging.DEBUG, f'getStreamInfo')
+    log(logging.DEBUG, f'getStreamInfo')
     info = {}
     info['audio'] = []
     info['video'] = []
@@ -231,10 +179,8 @@ def removeAdditionalAudioStreams(filepath):
     log(logging.DEBUG, f'removeAdditionalAudioStreams')
     filename, file_extension = os.path.splitext(filepath)
     
-#    response = []
-    response = {'success' : True, 'data': {}}
-    response['data']['output'] = []
-    response['data']['file'] = filepath
+    send_notification(filename, log(logging.INFO, f'Removing additional audio streams...'))
+    response = []
     cmd = ['ffprobe', '-show_format', '-show_streams', '-loglevel', 'quiet', '-print_format', 'json', filepath]
 
     ffmpegCmd = ['ffmpeg', '-v', 'quiet', '-stats', '-hide_banner', '-y', '-i', filepath]
@@ -243,7 +189,6 @@ def removeAdditionalAudioStreams(filepath):
     reconvert = False
 
     try:
-        log(logging.DEBUG, cmd)
         result = subprocess.check_output(cmd)
         data = json.loads(result.decode("utf-8"))
 
@@ -269,14 +214,10 @@ def removeAdditionalAudioStreams(filepath):
             if 'title' in audioStreams[0]['tags']:
                 title = audioStreams[0]['tags']['title']
                 
-            response['data']['output'].append(log(logging.INFO, f'File only has 1 audio stream: \n{SPACE}Codec: {audioStreams[0]["codec_name"]}\n{SPACE}Channels: {audioStreams[0]["channels"]}\n{SPACE}Title: {title}'))
-            response['data']['file'] = filepath
+            response.append(log(logging.INFO, f'File only has 1 audio stream: \n\tCodec: {audioStreams[0]["codec_name"]}\n\tChannels: {audioStreams[0]["channels"]}\n\tTitle: {title}'))
             return response
         
-
-        send_notification(filename, log(logging.INFO, f'Removing additional audio streams...'))
-
-        response['data']['output'].append(log(logging.INFO, f'File has {totalAudioStreams} audio streams:'))
+        response.append(log(logging.INFO, f'File has {totalAudioStreams} audio streams:'))
         for stream in data['streams']:
             if stream['codec_type'] == 'audio':
                 if streamsRemaining > 1:
@@ -284,7 +225,7 @@ def removeAdditionalAudioStreams(filepath):
                         # Remove the normalized stream
                         if 'Normalized' in stream['tags']['title']:
                             msg = f'#{fileNumber}) Removing Normalized audio: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             ffmpegCmd.append("-map")
                             ffmpegCmd.append("-0:a:%d" % audioStream)
@@ -292,7 +233,7 @@ def removeAdditionalAudioStreams(filepath):
                             streamsRemaining-=1
                         elif totalAudioStreams > 1 and hasSurroundAudio and int(stream['channels']) == 2:  # Remove the downmixed stream
                             msg = f'#{fileNumber}) Removing downmixed audio: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             logging.info(msg)
                             ffmpegCmd.append("-map")
@@ -301,7 +242,7 @@ def removeAdditionalAudioStreams(filepath):
                             streamsRemaining-=1
                         elif totalAudioStreams > 1 and int(stream['disposition']['default']) == 1: #
                             msg = f'#{fileNumber}) Removing default audio: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             ffmpegCmd.append("-map")
                             ffmpegCmd.append("-0:a:%d" % audioStream)
@@ -309,7 +250,7 @@ def removeAdditionalAudioStreams(filepath):
                             streamsRemaining-=1
                         elif '(' in stream['tags']['title']: #stream['codec_name'] == 'ac3' and audioStream + 1 >= streamsRemaining:
                             msg = f'#{fileNumber}) Removing additional stream:\n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             logging.info(msg)
                             ffmpegCmd.append("-map_metadata")
@@ -318,7 +259,7 @@ def removeAdditionalAudioStreams(filepath):
                             streamsRemaining-=1
                         elif streamsRemaining > 1:
                             msg = f'#{fileNumber}) Removing additional stream: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             logging.info(msg)
                             ffmpegCmd.append("-map")
@@ -327,12 +268,12 @@ def removeAdditionalAudioStreams(filepath):
                             streamsRemaining-=1
                         else:
                             msg = f'#{fileNumber}) Keeping stream: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                            response['data']['output'].append(log(logging.INFO, msg))
+                            response.append(log(logging.INFO, msg))
                             print(msg)
                             continue
                 else:
                     msg = f'#{fileNumber}) Keeping stream: \n\t\tTrack {audioStream + 1} of {totalAudioStreams}, \n\t\tCodec: {stream["codec_name"]}, \n\t\tTitle: {stream["tags"]["title"]}'
-                    response['data']['output'].append(log(logging.INFO, msg))
+                    response.append(log(logging.INFO, msg))
                     print(msg) 
                     
                 audioStream += 1
@@ -356,45 +297,36 @@ def removeAdditionalAudioStreams(filepath):
             cmd.append(filepathTmp)
 
             logging.debug("Running cmd: %s" % cmd)
-            response['data']['output'].append('FFMPEG Command: ' + str.join(' ', cmd))
+            response.append('FFMPEG Command: ' + str.join(' ', cmd))
             exitcode = run_command(cmd)
-            response['data']['output'].append(f'Exit code: {exitcode}')
+            response.append(f'Exit code: {exitcode}')
             
             if exitcode == 0:
                 logging.info("Converting successfully, removing old stuff...")
 
                 # os.remove(filepath)
-                if os.path.exists(filepath + '.original'):
-                    delete(filepath + '.original')
-                    
                 os.rename(filepath, filepath + '.original')
-                response['data']['output'].append(log(logging.INFO, f'Renamed {filepath} to {filepath}.original'))
+                response.append(log(logging.INFO, f'Renamed {filepath} to {filepath}.original'))
                 
-                if os.path.exists(filepathNew):
-                    delete(filepathNew)
-                    
                 os.rename(filepathTmp, filepathNew)
-                response['data']['output'].append(log(logging.INFO, f'Renamed {filepathTmp} to {filepathNew}'))
+                response.append(log(logging.INFO, f'Renamed {filepathTmp} to {filepathNew}'))
 
                 logging.info("Removing of audio tracks complete.")
-                response['data']['output'].append("Removing of audio tracks complete.")
-                
-                response['data']['file'] = filepathNew
+                response.append("Removing of audio tracks complete.")
             else:
                 logging.error("Converting failed, continuing...")
-                response['data']['output'].append("Removing of audio tracks FAILED.")
-                
-        return response
+                response.append("Removing of audio tracks FAILED.")
+
         # else:
         #     logging.info("File is already good, nothing to do...")
 
     except (subprocess.CalledProcessError, KeyError):
         logging.error("Couldn't check file %s, continuing..." % filepath)
-        response['data']['output'].append(f'Conversion of file {filepath} failed.')
+        response.append(f'Conversion of file {filepath} failed.')
         return None
 
 def run_command(command):
-    # send_notification(file, log(logging.INFO, f'Running command:\n{str.join(" ", command)}'))
+    send_notification(file, log(logging.INFO, f'Running command:\n{str.join(" ", command)}'))
     process = subprocess.Popen(command, stdout=subprocess.PIPE)
     while True:
         output = process.stdout.readline()
@@ -432,7 +364,7 @@ def rename(oldname, newname):
         return False
     
 def apply_compression(file, channels):
-    send_notification(file, log(logging.INFO, f'Applying compression.\n{SPACE}Downmix:{channels} channels'))
+    send_notification(file, log(logging.INFO, f'Applying compression.\n\tDownmix:{channels} channels'))
     
     response = {'success' : True, 'data': {}}
     output_file = getTempFilePath(file, '.wav') #f'{file}-ffmpeg.wav'
@@ -440,41 +372,25 @@ def apply_compression(file, channels):
     response['data']['tags'] = []
     
     try:
-        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file]
-        # cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, '-af']
-        audio_filter = []
+        cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, '-af']
+        audio_filter = ''
+        if config.getboolean('audio', 'apply_compression_filter') == True:
+            audio_filter = f'compand={compression_values}' # 'compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7'
             
         if config.getboolean('audio', 'downmix_audio') == True and channels > 2: #downmix == True:
-            if config.getboolean('audio', 'builtin_downmix') == True:
-                cmd.append('-ac')
-                cmd.append('2')
-            else:
-                downmix_filter = config['audio'][f'downmix_{channels}ch_filter']
-                audio_filter.append(downmix_filter)
-                # audio_filter = downmix_filter
+            downmix_filter = config['audio'][f'downmix_{channels}ch_filter']
             #audio_filter = f'pan=stereo|FL=1.0*FL+0.707*FC+0.707*SL+0.707*LFE|FR=1.0*FR+0.707*FC+0.707*SR+0.707*LFE,{audio_filter}'
-            # audio_filter = f'{downmix_filter},{audio_filter}'
+            audio_filter = f'{downmix_filter},{audio_filter}'
             file_message.append(log(logging.INFO, f'Downmixing {str(channels)} and extracting WAV'))
             response['data']['tags'].append('downmixed')
         else:
             logger.info("Extracting WAV")
-            
-        if config.getboolean('audio', 'apply_compression_filter') == True:
-            # audio_filter = f'compand={compression_values}' # 'compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7'
-            # audio_filter = f'{audio_filter},compand={compression_values}'
-            audio_filter.append(f'compand={compression_values}')
-            
-        if audio_filter != '':
-            cmd.append('-af')
-            cmd.append(str.join(',', audio_filter))
         #     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, "-af", "compand=attacks=0:points=-80/-90|-45/-45|-27/-25|0/-7|20/-7", "-vn", file + "-ffmpeg.wav"])
         #     tags.append('compand')
         #     tags.append('dynaudnorm')  
         
-        
+        cmd.append(audio_filter)
         cmd.append('-vn')
-        cmd.append('-ar')
-        cmd.append('48000')
         cmd.append(output_file)
         response['data']['command'] = str.join(' ', cmd)
         run_command(cmd)
@@ -498,13 +414,8 @@ def apply_loudnorm(file):
         loudnorm_values = getLoudNormValues(file)
         loudnorm_params = f"loudnorm=I={str(input_i)}:TP={str(input_tp)}:LRA={str(input_lra)}:measured_I={loudnorm_values['input_i']}:measured_LRA={loudnorm_values['input_lra']}:measured_TP={loudnorm_values['input_tp']}:measured_thresh={loudnorm_values['input_thresh']}:offset={loudnorm_values['target_offset']}:linear=true:print_format=summary"
         file_message.append(log(logging.INFO, loudnorm_params))
-        #ffmpeg -i in.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.61:measured_LRA=18.06:measured_TP=-4.47:measured_thresh=-39.20:offset=0.58:linear=true:print_format=summary -ar 48k out.wav
-        #cmd.append('-ar')
-        #cmd.append('48k')
         cmd.append(loudnorm_params)
         cmd.append('-vn')
-        cmd.append('-ar')
-        cmd.append('48000')
         cmd.append(output_file)
         # subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", file, "-af", loudnorm_params, "-vn", file + "-ffmpeg_norm.wav"])
         response['data']['command'] = str.join(' ', cmd)
@@ -549,18 +460,17 @@ def convert_audio(file):
         return response
 
 def merge_audio_and_video(video_file, audio_file):
-    send_notification(file, log(logging.INFO, f'Merging audio and video'))
+    send_notification(file, f'Merging audio and video')
     response = {'success' : True, 'data': {}}
     output_file = getTempFilePath(video_file, '_temp.mkv') #f'{video_file}_temp.mkv'
     response['data']['file'] = output_file
     try:
-        logger.info(f"Replacing Audio using mkvmerge\n{SPACE}Video file: {video_file}\n{SPACE}Audio file: {audio_file}\n{SPACE}Output file: {output_file}")
+        logger.info("Replacing Audio using mkvmerge")
         # replace audio track in original file with -qaac.m4a
         # subprocess.run(["mkvmerge", "-o", file + "_temp.mkv", file, "--no-audio", "--language", "0:eng", "--track-name", "0:Audio", file + "-aac.m4a"])
         #ffmpeg -i video.mp4 -i audio.wav -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 output.mp4
         #subprocess.run(["ffmpeg", "-i", file, "-i", file + "-aac.m4a", "-c:v", "copy", "-c:a", "aac", "-map", "0:v:0", "-map", "1:a:0", file + "_temp.mkv"])
         subprocess.run(["mkvmerge", "-o", output_file, "--no-audio", video_file, audio_file])
-        log(logging.INFO, 'Merge complete')
         # delete(file)
         return response
         # os.remove(loudnorm_audio_file)
@@ -572,7 +482,7 @@ def merge_audio_and_video(video_file, audio_file):
         
 def send_notification(title, message, retryAttempt = 0):
     if os.path.isfile(title):
-        filepath = FILE_PATH
+        filepath = SONARR_FILE_PATH
         filename, file_extension = os.path.splitext(filepath)
         title = filename
     # retryCount = 1
@@ -592,13 +502,8 @@ def send_notification(title, message, retryAttempt = 0):
             log(logging.WARNING, 'Retry count exceeded.  Continuing.')
 
 def replaceFile(current, new):
-    log(logging.INFO, f'Replacing file...\n{SPACE}Src: {current}\n{SPACE}Dst: {new}')
-    try:
-        result = shutil.copyfile(current, new)
-        return result
-    except Exception as e:
-        log(logging.INFO, e)
-        return False
+    result = shutil.copyfile(current, new)
+    return result
 
 def getFileMd5(file):
     md5_hash = hashlib.md5()
@@ -623,14 +528,12 @@ def processFile(file_path):
         exit(1)
     
     send_notification(FILE_NAME_AND_EXTENSION, log(logging.INFO, f'Processing {FILE_NAME_AND_EXTENSION}'))
-    
-    video_file = ''
     try:
         result = removeAdditionalAudioStreams(file_path)
-        log(logging.DEBUG, f'DONE removeAdditionalAudioStreams')
-        video_file = result['data']['file']
-        # file_message.append(str.join('\n', result['data']['output']))
-        data = getStreamInfo(result['data']['file'])
+        if result is not None:
+            file_message.append(str.join('\n', result))
+            
+        data = getStreamInfo(file_path)
         is_compressed = 'tags' in data['audio'][0] and 'COMPAND' in data['audio'][0]['tags']
         is_normalized = 'tags' in data['audio'][0] and 'DYNAUDNORM' in data['audio'][0]['tags']
         is_loudnorm = 'tags' in data['audio'][0] and 'LOUDNORM' in data['audio'][0]['tags']
@@ -645,9 +548,7 @@ def processFile(file_path):
         if is_normalized and is_compressed:
             file_message.append(log(logging.INFO, 'No need to convert audio'))
             send_notification(file_path, str.join('\n', file_message))
-            if is_sonarr_event:
-                exit(0)
-            return
+            exit(0)
 
         file_message.append(log(logging.INFO, f'Processing {FILE_NAME}'))
 
@@ -660,7 +561,7 @@ def processFile(file_path):
     codec = data['audio'][0]['codec_name']
     # extract audio to wav and apply filter if necessary
     file_message.append(log(logging.INFO, f'Audio stream has {channels} channels'))
-    response = apply_compression(result['data']['file'], channels)
+    response = apply_compression(file_path, channels)
     if response['success']:
         channels = 2
     # if channels > 2:
@@ -676,17 +577,16 @@ def processFile(file_path):
             codec = 'aac'
             
         # # delete -ffmpeg.wav file
-        logging.debug('Deleting wav file')
-        delete(loudnorm_audio_file)
+        # logging.debug('Deleting wav file')
+        # delete(loudnorm_audio_file)
 
         logger.info("Replacing Audio using mkvmerge")
         # replace audio track in original file with -qaac.m4a
-        merge_response = merge_audio_and_video(video_file, convert_audio_response['data']['file'])
+        merge_response = merge_audio_and_video(file_path, convert_audio_response['data']['file'])
         if(merge_response['success']):
-            log(logging.INFO, f"Created {merge_response['data']['file']}")
             delete(convert_audio_response['data']['file'])
 
-    temp_file = getTempFilePath(response['data']['file'], '.mkv')
+    temp_file = getTempFilePath(file_path, '.mkv')
     ffmpeg_cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", merge_response['data']['file']]
     audio_tags = {}
     audio_tags['title'] = 'Stereo (AAC Compressed & Normalized)'
@@ -707,47 +607,27 @@ def processFile(file_path):
     ffmpeg_cmd.append('encoding_tool=DOWNMIX_NORM_PYTHON')
     ffmpeg_cmd.append(temp_file) #file + "_temp_metadata.mkv")
     #'-threads', '0', '-metadata:g' , 'encoding_tool=SMA', file + "-ffmpeg_norm.mkv"]
-    log(logging.INFO, f"Preparing to run cmd: {str.join(', ' ,ffmpeg_cmd)}")
+    subprocess.run(ffmpeg_cmd)
     try:
-        run_command(ffmpeg_cmd)
         if(delete(merge_response['data']['file'])):#file + "_temp.mkv")):
+            
             if check_md5: 
                 newfile_md5 = getFileMd5(temp_file)
                 # file_md5 = getFileMd5(file)
-                replaceFile(temp_file, response['data']['file'])
-                replaced_file = getFileMd5(response['data']['file'])
+                replaceFile(temp_file, file_path)
+                replaced_file = getFileMd5(file_path)
                 
                 if newfile_md5 == replaced_file:
                     delete(temp_file)
             else:
-                #log(logging.INFO, f'Replacing file...\n\tSrc:')
                 # replaceFile(file_path, temp_file)
                 replaceFile(temp_file, file_path)
-                delete(response['data']['file'])
                 delete(temp_file)
-                if os.path.exists(file_path + '.original'):
-                    delete(file_path + '.original')
-        # subprocess.run(ffmpeg_cmd)
-        # if(delete(merge_response['data']['file'])):#file + "_temp.mkv")):
-            
-        #     if check_md5: 
-        #         newfile_md5 = getFileMd5(temp_file)
-        #         # file_md5 = getFileMd5(file)
-        #         replaceFile(temp_file, response['data']['file'])
-        #         replaced_file = getFileMd5(response['data']['file'])
-                
-        #         if newfile_md5 == replaced_file:
-        #             delete(temp_file)
-        #     else:
-        #         log(logging.INFO, 'Replacing file...')
-        #         # replaceFile(file_path, temp_file)
-        #         replaceFile(temp_file, response['data']['file'])
-        #         delete(temp_file)
             # if(rename(file, file + '.delete')):
             #     if(rename(file + "_temp_metadata.mkv", file)):
             #         delete(file + '.delete')
         # os.remove(file + "_temp.mkv")
-    except Exception as e:
+    except:
         logger.error(f"error while removing file: {merge_response['data']['file']}")
 
     #Send a CURL POST request to https://apprise.pleximus.co.za/notify with JSON data
@@ -761,53 +641,42 @@ def processFile(file_path):
 
 log(logging.INFO, '======== START PROCESSING ========')
 
-if 'sonarr_eventtype' in os.environ:
-    is_sonarr_event = True
-    if os.environ["sonarr_eventtype"].lower() == 'test':
-        log(logging.DEBUG, "Sonarr Test event detected.  Nothing to do here.")
-        print("Sonarr Test event detected.  Nothing to do here.")
-        exit(0)
+if 'sonarr_eventtype' not in os.environ:
+    log(logging.DEBUG, "No Sonarr event detected.  The script will now exit.")
+    print("No Sonarr event detected.  The script will now exit.")
+    exit(1)
+
+if os.environ["sonarr_eventtype"].lower() == 'test':
+    log(logging.DEBUG, "Sonarr Test event detected.  Nothing to do here.")
+    print("Sonarr Test event detected.  Nothing to do here.")
+    exit(0)
     
-for root, dirs, files in os.walk(directory):
-    prev_file = None
-    for f in files:  
-        prev_file = None
-        file_message = []
+    
+if os.environ["sonarr_eventtype"].lower() == 'download':
+    log(logging.DEBUG, "Sonarr Download event detected.  Processing file...")
+    if 'sonarr_episodefile_path' in os.environ:
+        log(logging.INFO, f'Sonarr passed file: {os.environ["sonarr_episodefile_path"]}')
         try:
-            if regexp.search(f) is None:
-                continue
-            file = os.path.normpath(os.path.join(root, f))
-            prev_file = file
-            FILE_PATH = os.path.normpath(os.path.join(root, f))
-            FILE_DIRECTORY_PATH, FILE_NAME_AND_EXTENSION = os.path.split(FILE_PATH)
+            SONARR_FILE_PATH = os.environ['sonarr_episodefile_path']
+            # FILE_NAME, FILE_EXTENSION = os.path.split(SONARR_FILE_PATH)
+            FILE_DIRECTORY_PATH, FILE_NAME_AND_EXTENSION = os.path.split(SONARR_FILE_PATH)
             FILE_NAME, FILE_EXTENSION = os.path.splitext(FILE_NAME_AND_EXTENSION)
-
-
-            try:
-                #if checkHistory(FILE_PATH):
-                #    continue
-                
-                # log(logging.DEBUG, f'FILE_PATH: {FILE_PATH}')
-                # log(logging.DEBUG, f'FILE_NAME: {FILE_NAME}')
-                # log(logging.DEBUG, f'FILE_EXTENSION: {FILE_EXTENSION}')
-                # log(logging.DEBUG, f'FILE_NAME_AND_EXTENSION: {FILE_NAME_AND_EXTENSION}')
-                # log(logging.DEBUG, f'FILE_DIRECTORY_PATH: {FILE_DIRECTORY_PATH}')
-                # log(logging.DEBUG, f'TEMP_FOLDER: {TEMP_FOLDER}')
-                # log(logging.INFO, '\n=================================================\n')
-                log(logging.DEBUG, '======== STARTED PROCESSING ========')
-                processFile(FILE_PATH)
-                # log(logging.INFO, f'Completed processing for: {FILE_NAME_AND_EXTENSION}')
-                
-            except Exception as e:
-                log(logging.ERROR,f"error while processing file: {FILE_PATH}")
-
-            addToHistory(FILE_PATH)
-            log(logging.INFO, '======== FINISHED PROCESSING ========\n\n\n')
-
-            if is_sonarr_event:
-                exit(0)
+            # FILE_NAME_AND_EXTENSION = f'{FILE_NAME}.{FILE_EXTENSION}'
+            # FILE_DIRECTORY_PATH = os.path.dirname(SONARR_FILE_PATH)
+            log(logging.DEBUG, f'SONARR_FILE_PATH: {SONARR_FILE_PATH}')
+            log(logging.DEBUG, f'FILE_NAME: {FILE_NAME}')
+            log(logging.DEBUG, f'FILE_EXTENSION: {FILE_EXTENSION}')
+            log(logging.DEBUG, f'FILE_NAME_AND_EXTENSION: {FILE_NAME_AND_EXTENSION}')
+            log(logging.DEBUG, f'FILE_DIRECTORY_PATH: {FILE_DIRECTORY_PATH}')
+            log(logging.DEBUG, f'TEMP_FOLDER: {TEMP_FOLDER}')
+            
+            processFile(SONARR_FILE_PATH)
+            log(logging.INFO, f'Completed processing for: {FILE_NAME_AND_EXTENSION}')
+            log(logging.INFO, '======== FINISHED PROCESSING ========')
+            exit(0)
         except Exception as e:
             log(logging.FATAL, f'Could not process file {FILE_NAME}. {e}')
             send_notification(FILE_NAME, str.join('\n', file_message))
             exit(1)
+        
         

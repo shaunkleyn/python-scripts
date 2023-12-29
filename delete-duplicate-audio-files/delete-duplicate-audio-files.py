@@ -56,4 +56,4 @@ def delete_duplicates(path):
                             f.write(f"\t\t{audio.pprint()}\n")
                             os.remove(os.path.join(root, file))
 
-delete_duplicates("/Volumes/Corvus/Music/iTunes/iTunes Media/Music/")
+delete_duplicates("T:/itunes/iTunes/iTunes Media/Music/Bob Marley/Sun Is Shining")
